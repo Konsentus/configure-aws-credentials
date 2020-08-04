@@ -13,26 +13,18 @@ const REGION_REGEX = /^[a-z0-9-]+$/g;
 
 async function assumeRole(params) {
   // Assume a role to get short-lived credentials using longer-lived credentials.
-  const isDefined = i => !!i;
+  const isDefined = (i) => !!i;
 
-  const {
-    sourceAccountId,
-    roleToAssume,
-    roleExternalId,
-    roleDurationSeconds,
-    roleSessionName,
-    region,
-    roleSkipSessionTagging
-  } = params;
+  const { sourceAccountId, roleToAssume, roleExternalId, roleDurationSeconds, roleSessionName, region, roleSkipSessionTagging } = params;
   assert(
-      [sourceAccountId, roleToAssume, roleDurationSeconds, roleSessionName, region].every(isDefined),
-      "Missing required input when assuming a Role."
+    [sourceAccountId, roleToAssume, roleDurationSeconds, roleSessionName, region].every(isDefined),
+    'Missing required input when assuming a Role.'
   );
 
-  const {GITHUB_REPOSITORY, GITHUB_WORKFLOW, GITHUB_ACTION, GITHUB_ACTOR, GITHUB_REF, GITHUB_SHA} = process.env;
+  const { GITHUB_REPOSITORY, GITHUB_WORKFLOW, GITHUB_ACTIONS, GITHUB_ACTOR, GITHUB_REF, GITHUB_SHA } = process.env;
   assert(
-      [GITHUB_REPOSITORY, GITHUB_WORKFLOW, GITHUB_ACTION, GITHUB_ACTOR, GITHUB_REF, GITHUB_SHA].every(isDefined),
-      'Missing required environment value. Are you running in GitHub Actions?'
+    [GITHUB_REPOSITORY, GITHUB_WORKFLOW, GITHUB_ACTIONS, GITHUB_ACTOR, GITHUB_REF, GITHUB_SHA].every(isDefined),
+    'Missing required environment value. Are you running in GitHub Actions?'
   );
 
   const sts = getStsClient(region);
@@ -43,13 +35,13 @@ async function assumeRole(params) {
     roleArn = `arn:aws:iam::${sourceAccountId}:role/${roleArn}`;
   }
   const tagArray = [
-    {Key: 'GitHub', Value: 'Actions'},
-    {Key: 'Repository', Value: GITHUB_REPOSITORY},
-    {Key: 'Workflow', Value: sanitizeGithubWorkflowName(GITHUB_WORKFLOW)},
-    {Key: 'Action', Value: GITHUB_ACTION},
-    {Key: 'Actor', Value: sanitizeGithubActor(GITHUB_ACTOR)},
-    {Key: 'Branch', Value: GITHUB_REF},
-    {Key: 'Commit', Value: GITHUB_SHA},
+    { Key: 'GitHub', Value: 'Actions' },
+    { Key: 'Repository', Value: GITHUB_REPOSITORY },
+    { Key: 'Workflow', Value: sanitizeGithubWorkflowName(GITHUB_WORKFLOW) },
+    { Key: 'Action', Value: GITHUB_ACTIONS },
+    { Key: 'Actor', Value: sanitizeGithubActor(GITHUB_ACTOR) },
+    { Key: 'Branch', Value: GITHUB_REF },
+    { Key: 'Commit', Value: GITHUB_SHA },
   ];
 
   const roleSessionTags = roleSkipSessionTagging ? undefined : tagArray;
@@ -58,28 +50,29 @@ async function assumeRole(params) {
     RoleArn: roleArn,
     RoleSessionName: roleSessionName,
     DurationSeconds: roleDurationSeconds,
-    Tags: roleSessionTags
+    Tags: roleSessionTags,
   };
 
   if (roleExternalId) {
     assumeRoleRequest.ExternalId = roleExternalId;
   }
 
-  return sts.assumeRole(assumeRoleRequest)
-  .promise()
-  .then(function (data) {
-    return {
-      accessKeyId: data.Credentials.AccessKeyId,
-      secretAccessKey: data.Credentials.SecretAccessKey,
-      sessionToken: data.Credentials.SessionToken,
-    };
-  });
+  return sts
+    .assumeRole(assumeRoleRequest)
+    .promise()
+    .then(function (data) {
+      return {
+        accessKeyId: data.Credentials.AccessKeyId,
+        secretAccessKey: data.Credentials.SecretAccessKey,
+        sessionToken: data.Credentials.SessionToken,
+      };
+    });
 }
 
 function sanitizeGithubActor(actor) {
   // In some circumstances the actor may contain square brackets. For example, if they're a bot ('[bot]')
   // Square brackets are not allowed in AWS session tags
-  return actor.replace(/\[|\]/g, SANITIZATION_CHARACTER)
+  return actor.replace(/\[|\]/g, SANITIZATION_CHARACTER);
 }
 
 function sanitizeGithubWorkflowName(name) {
@@ -87,14 +80,14 @@ function sanitizeGithubWorkflowName(name) {
   // This replaces anything not conforming to the tag restrictions by inverting the regular expression.
   // See the AWS documentation for constraint specifics https://docs.aws.amazon.com/STS/latest/APIReference/API_Tag.html.
   const nameWithoutSpecialCharacters = name.replace(/[^\p{L}\p{Z}\p{N}_:/=+.-@-]/gu, SANITIZATION_CHARACTER);
-  const nameTruncated = nameWithoutSpecialCharacters.slice(0, MAX_TAG_VALUE_LENGTH)
-  return nameTruncated
+  const nameTruncated = nameWithoutSpecialCharacters.slice(0, MAX_TAG_VALUE_LENGTH);
+  return nameTruncated;
 }
 
-function exportCredentials(params){
+function exportCredentials(params) {
   // Configure the AWS CLI and AWS SDKs using environment variables and set them as secrets.
   // Setting the credentials as secrets masks them in Github Actions logs
-  const {accessKeyId, secretAccessKey, sessionToken} = params;
+  const { accessKeyId, secretAccessKey, sessionToken } = params;
 
   // AWS_ACCESS_KEY_ID:
   // Specifies an AWS access key associated with an IAM user or role
@@ -157,7 +150,7 @@ function loadCredentials() {
         reject(err);
       }
       resolve(aws.config.credentials);
-    })
+    });
   });
 }
 
@@ -184,7 +177,7 @@ function getStsClient(region) {
   return new aws.STS({
     region,
     stsRegionalEndpoints: 'regional',
-    customUserAgent: USER_AGENT
+    customUserAgent: USER_AGENT,
   });
 }
 
@@ -196,12 +189,12 @@ async function run() {
     const region = core.getInput('aws-region', { required: true });
     const sessionToken = core.getInput('aws-session-token', { required: false });
     const maskAccountId = core.getInput('mask-aws-account-id', { required: false });
-    const roleToAssume = core.getInput('role-to-assume', {required: false});
+    const roleToAssume = core.getInput('role-to-assume', { required: false });
     const roleExternalId = core.getInput('role-external-id', { required: false });
-    const roleDurationSeconds = core.getInput('role-duration-seconds', {required: false}) || MAX_ACTION_RUNTIME;
+    const roleDurationSeconds = core.getInput('role-duration-seconds', { required: false }) || MAX_ACTION_RUNTIME;
     const roleSessionName = core.getInput('role-session-name', { required: false }) || ROLE_SESSION_NAME;
     const roleSkipSessionTagging = core.getInput('role-skip-session-tagging', { required: false });
-  
+
     if (!region.match(REGION_REGEX)) {
       throw new Error(`Region is not valid: ${region}`);
     }
@@ -218,7 +211,7 @@ async function run() {
         throw new Error("'aws-secret-access-key' must be provided if 'aws-access-key-id' is provided");
       }
 
-      exportCredentials({accessKeyId, secretAccessKey, sessionToken});
+      exportCredentials({ accessKeyId, secretAccessKey, sessionToken });
     }
 
     // Regardless of whether any source credentials were provided as inputs,
@@ -239,22 +232,20 @@ async function run() {
         roleExternalId,
         roleDurationSeconds,
         roleSessionName,
-        roleSkipSessionTagging
+        roleSkipSessionTagging,
       });
       exportCredentials(roleCredentials);
       await validateCredentials(roleCredentials.accessKeyId);
       await exportAccountId(maskAccountId, region);
     }
-  }
-  catch (error) {
+  } catch (error) {
     core.setFailed(error.message);
 
     const showStackTrace = process.env.SHOW_STACK_TRACE;
 
     if (showStackTrace === 'true') {
-      throw(error)
+      throw error;
     }
-
   }
 }
 
@@ -262,5 +253,5 @@ module.exports = run;
 
 /* istanbul ignore next */
 if (require.main === module) {
-    run();
+  run();
 }
