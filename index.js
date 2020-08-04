@@ -24,7 +24,7 @@ async function assumeRole(params) {
   const {GITHUB_REPOSITORY, GITHUB_WORKFLOW, GITHUB_ACTIONS, GITHUB_ACTOR, GITHUB_REF, GITHUB_SHA} = process.env;
   assert(
       [GITHUB_REPOSITORY, GITHUB_WORKFLOW, GITHUB_ACTIONS, GITHUB_ACTOR, GITHUB_REF, GITHUB_SHA].every(isDefined),
-      'Missing required environment value. Are you running in GitHub Actions?'
+      'Missing required environment value. Looks like you are not running in within GitHub Actions!'
   );
 
   const sts = getStsClient(region);
