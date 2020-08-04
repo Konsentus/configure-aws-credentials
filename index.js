@@ -21,10 +21,10 @@ async function assumeRole(params) {
     'Missing required input when assuming a Role.'
   );
 
-  const { GITHUB_REPOSITORY, GITHUB_WORKFLOW, GITHUB_ACTIONS, GITHUB_ACTOR, GITHUB_REF, GITHUB_SHA } = process.env;
+  const {GITHUB_REPOSITORY, GITHUB_WORKFLOW, GITHUB_ACTIONS, GITHUB_ACTOR, GITHUB_REF, GITHUB_SHA} = process.env;
   assert(
-    [GITHUB_REPOSITORY, GITHUB_WORKFLOW, GITHUB_ACTIONS, GITHUB_ACTOR, GITHUB_REF, GITHUB_SHA].every(isDefined),
-    'Missing required environment value. Are you running in GitHub Actions?'
+      [GITHUB_REPOSITORY, GITHUB_WORKFLOW, GITHUB_ACTIONS, GITHUB_ACTOR, GITHUB_REF, GITHUB_SHA].every(isDefined),
+      'Missing required environment value. Are you running in GitHub Actions?'
   );
 
   const sts = getStsClient(region);
@@ -35,13 +35,13 @@ async function assumeRole(params) {
     roleArn = `arn:aws:iam::${sourceAccountId}:role/${roleArn}`;
   }
   const tagArray = [
-    { Key: 'GitHub', Value: 'Actions' },
-    { Key: 'Repository', Value: GITHUB_REPOSITORY },
-    { Key: 'Workflow', Value: sanitizeGithubWorkflowName(GITHUB_WORKFLOW) },
-    { Key: 'Action', Value: GITHUB_ACTIONS },
-    { Key: 'Actor', Value: sanitizeGithubActor(GITHUB_ACTOR) },
-    { Key: 'Branch', Value: GITHUB_REF },
-    { Key: 'Commit', Value: GITHUB_SHA },
+    {Key: 'GitHub', Value: 'Actions'},
+    {Key: 'Repository', Value: GITHUB_REPOSITORY},
+    {Key: 'Workflow', Value: sanitizeGithubWorkflowName(GITHUB_WORKFLOW)},
+    {Key: 'Action', Value: GITHUB_ACTIONS},
+    {Key: 'Actor', Value: sanitizeGithubActor(GITHUB_ACTOR)},
+    {Key: 'Branch', Value: GITHUB_REF},
+    {Key: 'Commit', Value: GITHUB_SHA},
   ];
 
   const roleSessionTags = roleSkipSessionTagging ? undefined : tagArray;

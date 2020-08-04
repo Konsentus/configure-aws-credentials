@@ -17,13 +17,13 @@ const FAKE_ROLE_ACCOUNT_ID = '111111111111';
 const ROLE_NAME = 'MY-ROLE';
 const ROLE_ARN = 'arn:aws:iam::111111111111:role/MY-ROLE';
 const ENVIRONMENT_VARIABLE_OVERRIDES = {
-  SHOW_STACK_TRACE: 'true',
-  GITHUB_REPOSITORY: 'MY-REPOSITORY-NAME',
-  GITHUB_WORKFLOW: 'MY-WORKFLOW-ID',
-  GITHUB_ACTIONS: true,
-  GITHUB_ACTOR: 'MY-USERNAME[bot]',
-  GITHUB_REF: 'MY-BRANCH',
-  GITHUB_SHA: 'MY-COMMIT-ID',
+    SHOW_STACK_TRACE: 'true',
+    GITHUB_REPOSITORY: 'MY-REPOSITORY-NAME',
+    GITHUB_WORKFLOW: 'MY-WORKFLOW-ID',
+    GITHUB_ACTIONS: 'true',
+    GITHUB_ACTOR: 'MY-USERNAME[bot]',
+    GITHUB_REF: 'MY-BRANCH',
+    GITHUB_SHA: 'MY-COMMIT-ID',
 };
 const GITHUB_ACTOR_SANITIZED = 'MY-USERNAME_bot_';
 
@@ -479,64 +479,142 @@ describe('Configure AWS Credentials', () => {
     });
   });
 
-  test('workflow name sanitized in role assumption tags', async () => {
-    core.getInput = jest.fn().mockImplementation(mockGetInput(ASSUME_ROLE_INPUTS));
+    test('role assumption tags', async () => {
+        core.getInput = jest
+            .fn()
+            .mockImplementation(mockGetInput(ASSUME_ROLE_INPUTS));
 
-    process.env = {
-      ...process.env,
-      GITHUB_WORKFLOW:
-        'Workflow!"#$%&\'()*+, -./:;<=>?@[]^_`{|}~🙂💥🍌1yFvMOeD3ZHYsHrGjCceOboMYzBPo0CRNFdcsVRG6UgR3A912a8KfcBtEVvkAS7kRBq80umGff8mux5IN1y55HQWPNBNyaruuVr4islFXte4FDQZexGJRUSMyHQpxJ8OmZnET84oDmbvmIjgxI6IBrdihX9PHMapT4gQvRYnLqNiKb18rEMWDNoZRy51UPX5sWK2GKPipgKSO9kqLckZai9D2AN2RlWCxtMqChNtxuxjqeqhoQZo0oaq39sjcRZgAAAAAAA',
-    };
+        await run();
+        expect(mockStsAssumeRole).toHaveBeenCalledWith({
+            RoleArn: ROLE_ARN,
+            RoleSessionName: 'GitHubActions',
+            DurationSeconds: 6 * 3600,
+            Tags: [
+                {Key: 'GitHub', Value: 'Actions'},
+                {Key: 'Repository', Value: ENVIRONMENT_VARIABLE_OVERRIDES.GITHUB_REPOSITORY},
+                {Key: 'Workflow', Value: ENVIRONMENT_VARIABLE_OVERRIDES.GITHUB_WORKFLOW},
+                {Key: 'Action', Value: ENVIRONMENT_VARIABLE_OVERRIDES.GITHUB_ACTIONS},
+                {Key: 'Actor', Value: GITHUB_ACTOR_SANITIZED},
+                {Key: 'Branch', Value: ENVIRONMENT_VARIABLE_OVERRIDES.GITHUB_REF},
+                {Key: 'Commit', Value: ENVIRONMENT_VARIABLE_OVERRIDES.GITHUB_SHA},
+            ]
+        })
+    });
 
-    const sanitizedWorkflowName =
-      'Workflow__________+_ -./:;<=>?@____________1yFvMOeD3ZHYsHrGjCceOboMYzBPo0CRNFdcsVRG6UgR3A912a8KfcBtEVvkAS7kRBq80umGff8mux5IN1y55HQWPNBNyaruuVr4islFXte4FDQZexGJRUSMyHQpxJ8OmZnET84oDmbvmIjgxI6IBrdihX9PHMapT4gQvRYnLqNiKb18rEMWDNoZRy51UPX5sWK2GKPipgKSO9kqLckZa';
+    test('role assumption duration provided', async () => {
+        core.getInput = jest
+            .fn()
+            .mockImplementation(mockGetInput({...ASSUME_ROLE_INPUTS, 'role-duration-seconds': 5}));
 
-    await run();
-    expect(mockStsAssumeRole).toHaveBeenCalledWith({
-      RoleArn: ROLE_ARN,
-      RoleSessionName: 'GitHubActions',
-      DurationSeconds: 6 * 3600,
-      Tags: [
-        { Key: 'GitHub', Value: 'Actions' },
-        { Key: 'Repository', Value: ENVIRONMENT_VARIABLE_OVERRIDES.GITHUB_REPOSITORY },
-        { Key: 'Workflow', Value: sanitizedWorkflowName },
-        { Key: 'Action', Value: ENVIRONMENT_VARIABLE_OVERRIDES.GITHUB_ACTIONS },
-        { Key: 'Actor', Value: GITHUB_ACTOR_SANITIZED },
-        { Key: 'Branch', Value: ENVIRONMENT_VARIABLE_OVERRIDES.GITHUB_REF },
-        { Key: 'Commit', Value: ENVIRONMENT_VARIABLE_OVERRIDES.GITHUB_SHA },
-      ],
+        await run();
+        expect(mockStsAssumeRole).toHaveBeenCalledWith({
+            RoleArn: ROLE_ARN,
+            RoleSessionName: 'GitHubActions',
+            DurationSeconds: 5,
+            Tags: [
+                {Key: 'GitHub', Value: 'Actions'},
+                {Key: 'Repository', Value: ENVIRONMENT_VARIABLE_OVERRIDES.GITHUB_REPOSITORY},
+                {Key: 'Workflow', Value: ENVIRONMENT_VARIABLE_OVERRIDES.GITHUB_WORKFLOW},
+                {Key: 'Action', Value: ENVIRONMENT_VARIABLE_OVERRIDES.GITHUB_ACTIONS},
+                {Key: 'Actor', Value: GITHUB_ACTOR_SANITIZED},
+                {Key: 'Branch', Value: ENVIRONMENT_VARIABLE_OVERRIDES.GITHUB_REF},
+                {Key: 'Commit', Value: ENVIRONMENT_VARIABLE_OVERRIDES.GITHUB_SHA},
+            ]
+        })
+    });
+
+    test('role assumption session name provided', async () => {
+        core.getInput = jest
+            .fn()
+            .mockImplementation(mockGetInput({...ASSUME_ROLE_INPUTS, 'role-session-name': 'MySessionName'}));
+
+        await run();
+        expect(mockStsAssumeRole).toHaveBeenCalledWith({
+            RoleArn: ROLE_ARN,
+            RoleSessionName: 'MySessionName',
+            DurationSeconds: 6 * 3600,
+            Tags: [
+                {Key: 'GitHub', Value: 'Actions'},
+                {Key: 'Repository', Value: ENVIRONMENT_VARIABLE_OVERRIDES.GITHUB_REPOSITORY},
+                {Key: 'Workflow', Value: ENVIRONMENT_VARIABLE_OVERRIDES.GITHUB_WORKFLOW},
+                {Key: 'Action', Value: ENVIRONMENT_VARIABLE_OVERRIDES.GITHUB_ACTIONS},
+                {Key: 'Actor', Value: GITHUB_ACTOR_SANITIZED},
+                {Key: 'Branch', Value: ENVIRONMENT_VARIABLE_OVERRIDES.GITHUB_REF},
+                {Key: 'Commit', Value: ENVIRONMENT_VARIABLE_OVERRIDES.GITHUB_SHA},
+            ]
+        })
     });
   });
 
-  test('skip tagging provided as true', async () => {
-    core.getInput = jest.fn().mockImplementation(mockGetInput({ ...ASSUME_ROLE_INPUTS, 'role-skip-session-tagging': true }));
+    test('role name provided instead of ARN', async () => {
+        core.getInput = jest
+            .fn()
+            .mockImplementation(mockGetInput({...CREDS_INPUTS, 'role-to-assume': ROLE_NAME, 'aws-region': FAKE_REGION}));
 
-    await run();
-    expect(mockStsAssumeRole).toHaveBeenCalledWith({
-      RoleArn: ROLE_ARN,
-      RoleSessionName: 'GitHubActions',
-      DurationSeconds: 21600,
-      Tags: undefined,
+        await run();
+        expect(mockStsAssumeRole).toHaveBeenCalledWith({
+            RoleArn: 'arn:aws:iam::123456789012:role/MY-ROLE',
+            RoleSessionName: 'GitHubActions',
+            DurationSeconds: 6 * 3600,
+            Tags: [
+                {Key: 'GitHub', Value: 'Actions'},
+                {Key: 'Repository', Value: ENVIRONMENT_VARIABLE_OVERRIDES.GITHUB_REPOSITORY},
+                {Key: 'Workflow', Value: ENVIRONMENT_VARIABLE_OVERRIDES.GITHUB_WORKFLOW},
+                {Key: 'Action', Value: ENVIRONMENT_VARIABLE_OVERRIDES.GITHUB_ACTIONS},
+                {Key: 'Actor', Value: GITHUB_ACTOR_SANITIZED},
+                {Key: 'Branch', Value: ENVIRONMENT_VARIABLE_OVERRIDES.GITHUB_REF},
+                {Key: 'Commit', Value: ENVIRONMENT_VARIABLE_OVERRIDES.GITHUB_SHA},
+            ]
+        })
     });
-  });
 
-  test('skip tagging provided as false', async () => {
-    core.getInput = jest.fn().mockImplementation(mockGetInput({ ...ASSUME_ROLE_INPUTS, 'role-skip-session-tagging': false }));
+    test('role external ID provided', async () => {
+        core.getInput = jest
+            .fn()
+            .mockImplementation(mockGetInput({...ASSUME_ROLE_INPUTS, 'role-external-id': 'abcdef'}));
 
-    await run();
-    expect(mockStsAssumeRole).toHaveBeenCalledWith({
-      RoleArn: ROLE_ARN,
-      RoleSessionName: 'GitHubActions',
-      DurationSeconds: 21600,
-      Tags: [
-        { Key: 'GitHub', Value: 'Actions' },
-        { Key: 'Repository', Value: ENVIRONMENT_VARIABLE_OVERRIDES.GITHUB_REPOSITORY },
-        { Key: 'Workflow', Value: ENVIRONMENT_VARIABLE_OVERRIDES.GITHUB_WORKFLOW },
-        { Key: 'Action', Value: ENVIRONMENT_VARIABLE_OVERRIDES.GITHUB_ACTIONS },
-        { Key: 'Actor', Value: GITHUB_ACTOR_SANITIZED },
-        { Key: 'Branch', Value: ENVIRONMENT_VARIABLE_OVERRIDES.GITHUB_REF },
-        { Key: 'Commit', Value: ENVIRONMENT_VARIABLE_OVERRIDES.GITHUB_SHA },
-      ],
+        await run();
+        expect(mockStsAssumeRole).toHaveBeenCalledWith({
+            RoleArn: ROLE_ARN,
+            RoleSessionName: 'GitHubActions',
+            DurationSeconds: 6 * 3600,
+            Tags: [
+                {Key: 'GitHub', Value: 'Actions'},
+                {Key: 'Repository', Value: ENVIRONMENT_VARIABLE_OVERRIDES.GITHUB_REPOSITORY},
+                {Key: 'Workflow', Value: ENVIRONMENT_VARIABLE_OVERRIDES.GITHUB_WORKFLOW},
+                {Key: 'Action', Value: ENVIRONMENT_VARIABLE_OVERRIDES.GITHUB_ACTIONS},
+                {Key: 'Actor', Value: GITHUB_ACTOR_SANITIZED},
+                {Key: 'Branch', Value: ENVIRONMENT_VARIABLE_OVERRIDES.GITHUB_REF},
+                {Key: 'Commit', Value: ENVIRONMENT_VARIABLE_OVERRIDES.GITHUB_SHA},
+            ],
+            ExternalId: 'abcdef'
+        })
+    });
+
+    test('workflow name sanitized in role assumption tags', async () => {
+        core.getInput = jest
+            .fn()
+            .mockImplementation(mockGetInput(ASSUME_ROLE_INPUTS));
+
+        process.env = {...process.env, GITHUB_WORKFLOW: 'Workflow!"#$%&\'()*+, -./:;<=>?@[]^_`{|}~🙂💥🍌1yFvMOeD3ZHYsHrGjCceOboMYzBPo0CRNFdcsVRG6UgR3A912a8KfcBtEVvkAS7kRBq80umGff8mux5IN1y55HQWPNBNyaruuVr4islFXte4FDQZexGJRUSMyHQpxJ8OmZnET84oDmbvmIjgxI6IBrdihX9PHMapT4gQvRYnLqNiKb18rEMWDNoZRy51UPX5sWK2GKPipgKSO9kqLckZai9D2AN2RlWCxtMqChNtxuxjqeqhoQZo0oaq39sjcRZgAAAAAAA'};
+
+        const sanitizedWorkflowName = 'Workflow__________+_ -./:;<=>?@____________1yFvMOeD3ZHYsHrGjCceOboMYzBPo0CRNFdcsVRG6UgR3A912a8KfcBtEVvkAS7kRBq80umGff8mux5IN1y55HQWPNBNyaruuVr4islFXte4FDQZexGJRUSMyHQpxJ8OmZnET84oDmbvmIjgxI6IBrdihX9PHMapT4gQvRYnLqNiKb18rEMWDNoZRy51UPX5sWK2GKPipgKSO9kqLckZa'
+
+        await run();
+        expect(mockStsAssumeRole).toHaveBeenCalledWith({
+            RoleArn: ROLE_ARN,
+            RoleSessionName: 'GitHubActions',
+            DurationSeconds: 6 * 3600,
+            Tags: [
+                {Key: 'GitHub', Value: 'Actions'},
+                {Key: 'Repository', Value: ENVIRONMENT_VARIABLE_OVERRIDES.GITHUB_REPOSITORY},
+                {Key: 'Workflow', Value: sanitizedWorkflowName},
+                {Key: 'Action', Value: ENVIRONMENT_VARIABLE_OVERRIDES.GITHUB_ACTIONS},
+                {Key: 'Actor', Value: GITHUB_ACTOR_SANITIZED},
+                {Key: 'Branch', Value: ENVIRONMENT_VARIABLE_OVERRIDES.GITHUB_REF},
+                {Key: 'Commit', Value: ENVIRONMENT_VARIABLE_OVERRIDES.GITHUB_SHA},
+            ]
+        })
     });
   });
 
@@ -558,21 +636,48 @@ describe('Configure AWS Credentials', () => {
         { Key: 'Commit', Value: ENVIRONMENT_VARIABLE_OVERRIDES.GITHUB_SHA },
       ],
     });
-  });
+    test('skip tagging provided as false', async () => {
+        core.getInput = jest
+            .fn()
+            .mockImplementation(mockGetInput({...ASSUME_ROLE_INPUTS, 'role-skip-session-tagging': false}));
 
-  test('masks variables before exporting', async () => {
-    let maskedValues = [];
-    const publicFields = ['AWS_REGION', 'AWS_DEFAULT_REGION'];
-    core.setSecret.mockReset();
-    core.setSecret.mockImplementation((secret) => {
-      maskedValues.push(secret);
+        await run();
+        expect(mockStsAssumeRole).toHaveBeenCalledWith({
+            RoleArn: ROLE_ARN,
+            RoleSessionName: 'GitHubActions',
+            DurationSeconds: 21600,
+            Tags: [
+                {Key: 'GitHub', Value: 'Actions'},
+                {Key: 'Repository', Value: ENVIRONMENT_VARIABLE_OVERRIDES.GITHUB_REPOSITORY},
+                {Key: 'Workflow', Value: ENVIRONMENT_VARIABLE_OVERRIDES.GITHUB_WORKFLOW},
+                {Key: 'Action', Value: ENVIRONMENT_VARIABLE_OVERRIDES.GITHUB_ACTIONS},
+                {Key: 'Actor', Value: GITHUB_ACTOR_SANITIZED},
+                {Key: 'Branch', Value: ENVIRONMENT_VARIABLE_OVERRIDES.GITHUB_REF},
+                {Key: 'Commit', Value: ENVIRONMENT_VARIABLE_OVERRIDES.GITHUB_SHA},
+            ]
+        })
     });
 
-    core.exportVariable.mockReset();
-    core.exportVariable.mockImplementation((name, value) => {
-      if (!maskedValues.includes(value) && !publicFields.includes(name)) {
-        throw new Error(value + ' for variable ' + name + ' is not masked yet!');
-      }
+    test('skip tagging not provided', async () => {
+        core.getInput = jest
+            .fn()
+            .mockImplementation(mockGetInput({...ASSUME_ROLE_INPUTS}));
+
+        await run();
+        expect(mockStsAssumeRole).toHaveBeenCalledWith({
+            RoleArn: ROLE_ARN,
+            RoleSessionName: 'GitHubActions',
+            DurationSeconds: 21600,
+            Tags: [
+                {Key: 'GitHub', Value: 'Actions'},
+                {Key: 'Repository', Value: ENVIRONMENT_VARIABLE_OVERRIDES.GITHUB_REPOSITORY},
+                {Key: 'Workflow', Value: ENVIRONMENT_VARIABLE_OVERRIDES.GITHUB_WORKFLOW},
+                {Key: 'Action', Value: ENVIRONMENT_VARIABLE_OVERRIDES.GITHUB_ACTIONS},
+                {Key: 'Actor', Value: GITHUB_ACTOR_SANITIZED},
+                {Key: 'Branch', Value: ENVIRONMENT_VARIABLE_OVERRIDES.GITHUB_REF},
+                {Key: 'Commit', Value: ENVIRONMENT_VARIABLE_OVERRIDES.GITHUB_SHA},
+            ]
+        })
     });
 
     core.getInput = jest.fn().mockImplementation(mockGetInput(ASSUME_ROLE_INPUTS));
